@@ -1,0 +1,1 @@
+Opsional: letakkan model karakter beruang rigged berlisensi sesuai di sini dengan nama bear.glb.
