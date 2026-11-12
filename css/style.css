@@ -3,3 +3,9 @@
 #overlay{position:absolute;inset:0;display:grid;place-items:center;background:#07181099;pointer-events:auto}.dialog{width:min(90vw,420px);background:#123525f2;border:1px solid #ffffff44;border-radius:22px;padding:25px;text-align:center;box-shadow:0 20px 55px #0005}.dialog h1{margin:3px 0 8px}.dialog p{font-size:14px;color:#e2eee5;line-height:1.5}.hero{font-size:52px}button{border:0;border-radius:12px;padding:13px 18px;background:#ffd45b;color:#382a06;font-weight:900}.small{font-size:11px!important;opacity:.7}
 #mobile{display:none;position:fixed;left:0;right:0;bottom:18px;justify-content:space-between;align-items:end;padding:0 20px;pointer-events:none}#stick{width:116px;height:116px;border:2px solid #fff9;border-radius:50%;background:#ffffff35;position:relative;pointer-events:auto}#knob{position:absolute;left:32px;top:32px;width:48px;height:48px;border-radius:50%;background:#fffe}#jump{width:82px;height:82px;border-radius:50%;pointer-events:auto}
 @media(pointer:coarse){#mobile{display:flex}#help{display:none}}@media(max-width:600px){#brand{font-size:12px}#stats{font-size:12px;gap:7px}#mission{font-size:10px}}
+
+#overlay{z-index:20}
+#overlay .dialog{position:relative;z-index:21;pointer-events:auto}
+#start{position:relative;z-index:22;pointer-events:auto;cursor:pointer;touch-action:manipulation}
+#start:active{transform:scale(.98)}
+#toast{z-index:30;pointer-events:none}
