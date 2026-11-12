@@ -1,4 +1,5 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
 
 const mount=document.querySelector('#game'),scene=new THREE.Scene();
 scene.background=new THREE.Color(0x9bd7ed);scene.fog=new THREE.Fog(0x9bd7ed,32,88);
@@ -43,15 +44,23 @@ ball(.43,1,1,.95,mat.bear,0,0,0,head);
 for(const x of [-.31,.31]){ball(.18,1,1,1,mat.bear,x,.34,0,head);ball(.095,1,1,1,mat.cream,x,.34,.045,head);ball(.052,1,1,.5,mat.black,x*.52,.12,.38,head)}
 ball(.22,1,.75,1,mat.cream,0,-.12,.34,head);ball(.085,1,1,.7,mat.black,0,-.08,.53,head);
 // Only two leg pivots, left and right
-const legs=[];
+const legs=[]; // exactly TWO legs
 for(const x of [-.29,.29]){const pivot=group(x,.55,0,bear);ball(.22,1,1,1,mat.bear,0,-.17,.02,pivot);ball(.13,1,.55,1,mat.dark,0,-.29,.12,pivot);legs.push(pivot)}
 // Only two arm pivots, left and right
-const arms=[];
+const arms=[]; // exactly TWO arms
 for(const x of [-.53,.53]){const pivot=group(x,1.48,0,bear);ball(.17,1,1,1,mat.bear,0,-.22,.02,pivot);arms.push(pivot)}
 const bearStart=new THREE.Vector3(0,0,4);bear.position.copy(bearStart);
 
+// Persistent progress and sound
+const keys={};const SAVE='bearAdventure04';
+let saved={};try{saved=JSON.parse(localStorage.getItem(SAVE)||'{}')}catch(e){}
+let collected=new Set(saved.collected||[]),active=false,vy=0,onGround=true,camYaw=0,camPitch=.22,coinsTaken=collected.size,lives=saved.lives||3,invuln=0,toastTimer=0;
+function save(){localStorage.setItem(SAVE,JSON.stringify({collected:[...collected],lives,checkpoint:checkpointReached}))}
+let audioCtx=null;
+function sound(type){try{audioCtx ||= new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);const now=audioCtx.currentTime,pr={coin:[880,1320,.12],jump:[260,430,.14],hurt:[180,85,.22],checkpoint:[520,900,.3],step:[130,100,.035]},v=pr[type]||pr.coin;o.type=type==='hurt'?'sawtooth':'sine';o.frequency.setValueAtTime(v[0],now);o.frequency.exponentialRampToValueAtTime(v[1],now+v[2]);g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(.09,now+.01);g.gain.exponentialRampToValueAtTime(.0001,now+v[2]);o.start();o.stop(now+v[2]+.02)}catch(e){}}
+
 // Coins
-const coins=[];for(let i=0;i<12;i++){const a=i/12*Math.PI*2,r=5.8+(i%3)*.55,c=add(new THREE.TorusGeometry(.31,.1,8,16),mat.gold,Math.cos(a)*r,.95,Math.sin(a)*r-5);c.rotation.x=Math.PI/2;coins.push(c)}
+const coins=[];for(let i=0;i<12;i++){const a=i/12*Math.PI*2,r=5.8+(i%3)*.55,c=add(new THREE.TorusGeometry(.31,.1,8,16),mat.gold,Math.cos(a)*r,.95,Math.sin(a)*r-5);c.rotation.x=Math.PI/2;if(collected.has(i))c.visible=false;coins.push(c)}
 
 // One simple patrol slime enemy
 const enemy=group(4,0,-12);ball(.52,1.15,.8,.9,mat.slime,0,.48,0,enemy);ball(.065,1,1,.5,mat.black,-.18,.58,.43,enemy);ball(.065,1,1,.5,mat.black,.18,.58,.43,enemy);
@@ -59,10 +68,9 @@ const enemyHome=enemy.position.clone();let enemyPhase=0;
 
 // Checkpoint flag
 const checkpoint=group(0,0,-24);box(.12,2.8,.12,mat.bark,0,1.4,0,checkpoint);const flag=add(new THREE.PlaneGeometry(1.1,.65),M(0xffdf57),.58,2.35,0,checkpoint);flag.rotation.y=-.12;
-let checkpointReached=false;
+let checkpointReached=!!saved.checkpoint;
 
 // State, controls and UI
-const keys={};let active=false,vy=0,onGround=true,camYaw=0,camPitch=.22,coinsTaken=0,lives=3,invuln=0,toastTimer=0;
 const toast=document.querySelector('#toast');
 function say(t){toast.textContent=t;toastTimer=2.2}
 function updateHUD(){document.querySelector('#coins').textContent=coinsTaken;document.querySelector('#lives').textContent=lives;document.querySelector('#mission').textContent=coinsTaken>=12?'Misi koin selesai! Menuju pos pemeriksaan':'Misi: kumpulkan 12 koin dan capai pos pemeriksaan'}
@@ -75,7 +83,7 @@ stick.addEventListener('pointerdown',e=>{stickOn=true;stick.setPointerCapture(e.
 document.querySelector('#start').onclick=()=>{active=true;document.querySelector('#overlay').style.display='none'};
 function blocked(x,z){return obstacles.some(o=>(x-o.x)**2+(z-o.z)**2<(o.r+.52)**2)}
 function movePlayer(dx,dz){const nx=bear.position.x+dx,nz=bear.position.z+dz;if(!blocked(nx,bear.position.z))bear.position.x=nx;if(!blocked(bear.position.x,nz))bear.position.z=nz;bear.position.x=THREE.MathUtils.clamp(bear.position.x,-16,16);bear.position.z=THREE.MathUtils.clamp(bear.position.z,-34,18)}
-function hurt(){if(invuln>0)return;lives--;invuln=1.8;say('Aduh! Terkena slime.');if(lives<=0){lives=3;bear.position.copy(checkpointReached?new THREE.Vector3(0,0,-24):bearStart);say('Coba lagi! Kembali ke titik aman.')}else bear.position.copy(checkpointReached?new THREE.Vector3(0,0,-24):bearStart);updateHUD()}
+function hurt(){if(invuln>0)return;lives--;invuln=1.8;say('Aduh! Terkena slime.');save();sound('hurt');if(lives<=0){lives=3;bear.position.copy(checkpointReached?new THREE.Vector3(0,0,-24):bearStart);say('Coba lagi! Kembali ke titik aman.')}else bear.position.copy(checkpointReached?new THREE.Vector3(0,0,-24):bearStart);updateHUD()}
 const clock=new THREE.Clock();
 function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.04),t=clock.elapsedTime;
  if(active){
@@ -84,14 +92,17 @@ function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDel
   const moving=len>.08,cf=new THREE.Vector3(-Math.sin(camYaw),0,-Math.cos(camYaw)),cr=new THREE.Vector3(Math.cos(camYaw),0,-Math.sin(camYaw)),dir=cf.multiplyScalar(ff).add(cr.multiplyScalar(ss));
   if(moving){bear.rotation.y=Math.atan2(dir.x,dir.z);const speed=(keys.ShiftLeft||keys.ShiftRight)?7:4.8;movePlayer(dir.x*speed*dt,dir.z*speed*dt)}
   vy-=19*dt;bear.position.y+=vy*dt;if(bear.position.y<=0){bear.position.y=0;vy=0;onGround=true}
-  legs.forEach((p,i)=>p.rotation.x=moving&&onGround?Math.sin(t*11+i*Math.PI)*.55:THREE.MathUtils.damp(p.rotation.x,0,8,dt));
+  legs.forEach((p,i)=>{p.rotation.x=moving&&onGround?Math.sin(t*10+i*Math.PI)*.62:THREE.MathUtils.damp(p.rotation.x,0,8,dt);p.rotation.z=moving&&onGround?Math.sin(t*5+i*Math.PI)*.035:0});
+  arms.forEach((p,i)=>{p.rotation.x=moving&&onGround?Math.sin(t*10+i*Math.PI+Math.PI)*.48:THREE.MathUtils.damp(p.rotation.x,0,8,dt);p.rotation.z=(i===0?-.08:.08)+(moving?Math.sin(t*10+i*Math.PI)*.04:0)});
+  head.rotation.x=onGround?Math.sin(t*2)*.025:-.08;
+  if(moving&&onGround&&Math.floor(t*3)!==Math.floor((t-dt)*3))sound('step');
   arms.forEach((p,i)=>p.rotation.x=moving&&onGround?Math.sin(t*11+i*Math.PI+Math.PI)*.4:THREE.MathUtils.damp(p.rotation.x,0,8,dt));
   bear.visible=invuln<=0||Math.floor(t*12)%2===0;
-  coins.forEach((c,i)=>{if(!c.visible)return;c.rotation.z+=dt*2;c.position.y=.95+Math.sin(t*2+i)*.1;const dx=c.position.x-bear.position.x,dz=c.position.z-bear.position.z;if(dx*dx+dz*dz<1.15&&bear.position.y<1.15){c.visible=false;coinsTaken++;updateHUD();say('Koin ditemukan! 🪙')}});
+  coins.forEach((c,i)=>{if(!c.visible)return;c.rotation.z+=dt*2;c.position.y=.95+Math.sin(t*2+i)*.1;const dx=c.position.x-bear.position.x,dz=c.position.z-bear.position.z;if(dx*dx+dz*dz<1.15&&bear.position.y<1.15){c.visible=false;collected.add(i);coinsTaken=collected.size;updateHUD();save();sound('coin');say('Koin ditemukan! 🪙')}});
   enemyPhase+=dt;enemy.position.x=enemyHome.x+Math.sin(enemyPhase*1.25)*2.3;enemy.position.z=enemyHome.z+Math.cos(enemyPhase*.8)*1.1;enemy.rotation.y=Math.PI/2+Math.sin(enemyPhase)*.25;
   if(Math.hypot(enemy.position.x-bear.position.x,enemy.position.z-bear.position.z)<1.05&&bear.position.y<1.1)hurt();
-  if(!checkpointReached&&Math.hypot(bear.position.x,bear.position.z+24)<2.2){checkpointReached=true;say('Pos pemeriksaan tercapai!');updateHUD()}
-  if(coinsTaken>=12&&checkpointReached){missionText('PETUALANGAN 0.3 SELESAI! 🎉')}
+  if(!checkpointReached&&Math.hypot(bear.position.x,bear.position.z+24)<2.2){checkpointReached=true;say('Pos pemeriksaan tercapai!');updateHUD();save();sound('checkpoint')}
+  if(coinsTaken>=12&&checkpointReached){missionText('PETUALANGAN 0.4 SELESAI! 🎉')}if(window.__bearMixer)window.__bearMixer.update(dt);
  }
  const target=new THREE.Vector3(bear.position.x,bear.position.y+1.25,bear.position.z),d=8.2,h=Math.cos(camPitch)*d,pos=new THREE.Vector3(target.x+Math.sin(camYaw)*h,target.y+2+Math.sin(camPitch)*d,target.z+Math.cos(camYaw)*h);camera.position.lerp(pos,.12);camera.lookAt(target);renderer.render(scene,camera)
 }
