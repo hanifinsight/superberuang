@@ -1,8 +1,9 @@
 {
-  "name": "Bear Adventure 0.2",
+  "name": "Bear Adventure Prototype 0.3",
   "short_name": "Bear Adventure",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#9bd7ed",
-  "theme_color": "#183326"
+  "theme_color": "#183326",
+  "description": "Game petualangan beruang 3D"
 }
