@@ -1,6 +1,15 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
-import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
 
+window.addEventListener('error',e=>{
+ const toast=document.querySelector('#toast');
+ if(toast)toast.textContent='Terjadi kesalahan saat menjalankan game. Muat ulang halaman.';
+ console.error('Bear Adventure runtime error:',e.error||e.message);
+});
+window.addEventListener('unhandledrejection',e=>{
+ const toast=document.querySelector('#toast');
+ if(toast)toast.textContent='Komponen game gagal dimuat. Periksa koneksi internet lalu muat ulang.';
+ console.error('Bear Adventure module error:',e.reason);
+});
 const mount=document.querySelector('#game'),scene=new THREE.Scene();
 scene.background=new THREE.Color(0x9bd7ed);scene.fog=new THREE.Fog(0x9bd7ed,32,88);
 const camera=new THREE.PerspectiveCamera(62,innerWidth/innerHeight,.1,150);
@@ -55,7 +64,7 @@ const bearStart=new THREE.Vector3(0,0,4);bear.position.copy(bearStart);
 const keys={};const SAVE='bearAdventure04';
 let saved={};try{saved=JSON.parse(localStorage.getItem(SAVE)||'{}')}catch(e){}
 let collected=new Set(saved.collected||[]),active=false,vy=0,onGround=true,camYaw=0,camPitch=.22,coinsTaken=collected.size,lives=saved.lives||3,invuln=0,toastTimer=0;
-function save(){localStorage.setItem(SAVE,JSON.stringify({collected:[...collected],lives,checkpoint:checkpointReached}))}
+function save(){try{localStorage.setItem(SAVE,JSON.stringify({collected:[...collected],lives,checkpoint:checkpointReached}))}catch(err){console.warn('Progress tidak dapat disimpan:',err)}}
 let audioCtx=null;
 function sound(type){try{audioCtx ||= new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);const now=audioCtx.currentTime,pr={coin:[880,1320,.12],jump:[260,430,.14],hurt:[180,85,.22],checkpoint:[520,900,.3],step:[130,100,.035]},v=pr[type]||pr.coin;o.type=type==='hurt'?'sawtooth':'sine';o.frequency.setValueAtTime(v[0],now);o.frequency.exponentialRampToValueAtTime(v[1],now+v[2]);g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(.09,now+.01);g.gain.exponentialRampToValueAtTime(.0001,now+v[2]);o.start();o.stop(now+v[2]+.02)}catch(e){}}
 
@@ -76,11 +85,17 @@ function say(t){toast.textContent=t;toastTimer=2.2}
 function updateHUD(){document.querySelector('#coins').textContent=coinsTaken;document.querySelector('#lives').textContent=lives;document.querySelector('#mission').textContent=coinsTaken>=12?'Misi koin selesai! Menuju pos pemeriksaan':'Misi: kumpulkan 12 koin dan capai pos pemeriksaan'}
 addEventListener('keydown',e=>{keys[e.code]=true;if(['Space','ArrowUp','ArrowDown'].includes(e.code))e.preventDefault();if(e.code==='Space')jump()});
 addEventListener('keyup',e=>keys[e.code]=false);function jump(){if(active&&onGround){vy=7.3;onGround=false}}
-let dragging=false,lx=0,ly=0;renderer.domElement.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'){dragging=true;lx=e.clientX;ly=e.clientY}});addEventListener('pointerup',()=>dragging=false);addEventListener('pointermove',e=>{if(dragging){camYaw-=(e.clientX-lx)*.006;camPitch=THREE.MathUtils.clamp(camPitch+(e.clientY-ly)*.003,-.05,.7);lx=e.clientX;ly=e.clientY}});
+let dragging=false,lx=0,ly=0;renderer.domElement.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&active){dragging=true;lx=e.clientX;ly=e.clientY}});addEventListener('pointerup',()=>dragging=false);addEventListener('pointermove',e=>{if(dragging){camYaw-=(e.clientX-lx)*.006;camPitch=THREE.MathUtils.clamp(camPitch+(e.clientY-ly)*.003,-.05,.7);lx=e.clientX;ly=e.clientY}});
 let sx=0,sy=0,stick=document.querySelector('#stick'),knob=document.querySelector('#knob'),stickOn=false;
 function stickMove(e){const r=stick.getBoundingClientRect();let dx=e.clientX-r.left-r.width/2,dy=e.clientY-r.top-r.height/2,l=Math.hypot(dx,dy),m=38;if(l>m){dx*=m/l;dy*=m/l}sx=dx/m;sy=dy/m;knob.style.transform=`translate(${dx}px,${dy}px)`}
 stick.addEventListener('pointerdown',e=>{stickOn=true;stick.setPointerCapture(e.pointerId);stickMove(e)});stick.addEventListener('pointermove',e=>{if(stickOn)stickMove(e)});function resetStick(){stickOn=false;sx=sy=0;knob.style.transform='translate(0,0)'}stick.addEventListener('pointerup',resetStick);stick.addEventListener('pointercancel',resetStick);document.querySelector('#jump').addEventListener('pointerdown',jump);
-document.querySelector('#start').onclick=()=>{active=true;document.querySelector('#overlay').style.display='none'};
+const startButton=document.querySelector('#start');
+startButton.type='button';
+startButton.addEventListener('click',()=>{
+ active=true;
+ document.querySelector('#overlay').style.display='none';
+ startButton.blur();
+});
 function blocked(x,z){return obstacles.some(o=>(x-o.x)**2+(z-o.z)**2<(o.r+.52)**2)}
 function movePlayer(dx,dz){const nx=bear.position.x+dx,nz=bear.position.z+dz;if(!blocked(nx,bear.position.z))bear.position.x=nx;if(!blocked(bear.position.x,nz))bear.position.z=nz;bear.position.x=THREE.MathUtils.clamp(bear.position.x,-16,16);bear.position.z=THREE.MathUtils.clamp(bear.position.z,-34,18)}
 function hurt(){if(invuln>0)return;lives--;invuln=1.8;say('Aduh! Terkena slime.');save();sound('hurt');if(lives<=0){lives=3;bear.position.copy(checkpointReached?new THREE.Vector3(0,0,-24):bearStart);say('Coba lagi! Kembali ke titik aman.')}else bear.position.copy(checkpointReached?new THREE.Vector3(0,0,-24):bearStart);updateHUD()}
