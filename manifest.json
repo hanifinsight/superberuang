@@ -1,8 +1,10 @@
 {
-  "name": "Bear Adventure Prototype 0.4",
-  "short_name": "Bear Adventure",
+  "name": "Bear Adventure 0.5.1",
+  "short_name": "BearAdventure",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#9bd7ed",
-  "theme_color": "#183326"
+  "background_color": "#183326",
+  "theme_color": "#183326",
+  "orientation": "landscape",
+  "description": "Game petualangan 3D beruang untuk laptop dan HP."
 }

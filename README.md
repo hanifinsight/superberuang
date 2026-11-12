@@ -1,21 +1,25 @@
-# Bear Adventure — Prototype 0.4.1 (Perbaikan tombol mulai)
+# Bear Adventure — Prototype 0.5.2
 
-## Perbaikan
-- Menghapus import GLTFLoader yang belum digunakan pada versi 0.4. Ini mengurangi satu titik kegagalan saat modul eksternal gagal dimuat.
-- Binding tombol MULAI PETUALANGAN memakai `addEventListener` dan secara eksplisit mengaktifkan loop gameplay.
-- Memperbaiki class dialog pada HTML agar style panel mulai diterapkan.
-- Memperjelas lapisan klik (z-index dan pointer-events) pada tombol.
-- Menambahkan pesan kesalahan runtime agar kegagalan modul lebih mudah diketahui.
-- Cache Service Worker diperbarui agar browser mengambil file versi baru.
+## Penambahan versi 0.5.2
+- Seluruh tekstur lokal sudah disediakan dan dipakai oleh material Three.js: rumput, jalur tanah, batang pohon, daun, batu, dinding, atap, dan air.
+- Audio lokal sudah disediakan: ambience hutan loop serta efek koin, lompat, terkena musuh, checkpoint, langkah, dan dialog.
+- Audio ambience mulai setelah pemain menekan tombol MULAI PETUALANGAN (mengikuti kebijakan autoplay browser).
+- Service worker memasukkan seluruh tekstur PNG dan audio WAV ke cache.
+- Audio Web Audio sintetis tetap menjadi fallback jika audio file gagal dimainkan.
 
-## Cara menjalankan
-1. Ekstrak ZIP.
-2. Upload seluruh isi folder `bear-adventure-prototype-04` ke GitHub (timpa file versi lama).
-3. Jika menggunakan GitHub Pages, tunggu deployment selesai.
-4. Buka ulang URL dengan refresh paksa / hapus cache situs bila perlu.
-5. Klik MULAI PETUALANGAN.
+## Struktur aset
+- `assets/models/bear.glb`
+- `assets/textures/*.png`
+- `assets/audio/*.wav`
 
-Gunakan HTTPS (GitHub Pages) atau Live Server. Jangan membuka `index.html` melalui `file://`, karena browser membatasi pemuatan JavaScript module dari CDN.
+## Menjalankan
+Gunakan VS Code Live Server atau GitHub Pages. Jangan membuka `index.html` langsung dengan double-click karena browser membatasi ES Modules dan pemuatan aset pada `file://`.
+
+## Kontrol
+WASD / panah untuk bergerak, Space untuk lompat, Shift untuk lari, E untuk berbicara dengan NPC. Di HP gunakan joystick dan tombol layar.
+
+## Offline
+File model, tekstur, dan audio disimpan lokal serta masuk precache Service Worker. Library Three.js dan GLTFLoader masih diambil dari CDN, sehingga koneksi internet tetap dibutuhkan untuk pemuatan awal library. Setelah library CDN berhasil dicache oleh browser, ketersediaan offline bergantung pada cache browser dan service worker.
 
 ## Catatan
-Game memerlukan browser yang mendukung WebGL dan koneksi internet untuk mengambil Three.js dari CDN.
+Model beruang GLB berupa mesh statis, belum memiliki rig/skeleton. Gameplay perlu diuji melalui browser desktop dan HP setelah diunggah.
