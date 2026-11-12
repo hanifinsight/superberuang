@@ -1,22 +1,15 @@
-# Bear Adventure — Prototype 0.3
+# Bear Adventure Prototype 0.4
 
-## Pembaruan
-- Koreksi anatomi: karakter beruang sekarang bipedal dengan tepat **2 kaki dan 2 tangan** (bukan empat kaki).
-- Dunia hutan, desa kecil, sungai, jembatan, dan pintu gua.
-- Animasi dasar ayunan dua kaki dan dua tangan saat berjalan.
-- Musuh slime berpatroli; kontak mengurangi nyawa.
-- Tiga nyawa dan respawn pada titik awal / checkpoint.
-- Pos pemeriksaan berupa bendera dekat jembatan.
-- 12 koin koleksi.
-- Keyboard WASD/panah, Space lompat, Shift lari; joystick dan tombol lompat untuk HP.
-- Kamera third-person dapat diputar dengan drag mouse.
-- PWA cache dasar.
+Pembaruan: beruang bipedal tepat 2 kaki + 2 tangan; animasi prosedural idle/berjalan/lari/lompat; efek suara Web Audio; progres koin, nyawa dan checkpoint tersimpan di LocalStorage; dukungan opsional GLB melalui `assets/bear.glb`; lingkungan hutan, desa, sungai, jembatan, gua, slime, checkpoint dan 12 koin.
 
-## Pasang ke GitHub Pages
-Upload semua isi folder ini ke root repository (jangan upload folder pembungkusnya saja), lalu Settings → Pages → Deploy from a branch → main → /(root) → Save.
+## GitHub Pages
+Unggah seluruh isi folder ini ke root repository. Settings → Pages → Deploy from a branch → main → /(root) → Save.
+
+## GLB
+Tidak ada model GLB profesional yang disertakan. Jika memiliki model bear rigged yang berlisensi sesuai, simpan sebagai `assets/bear.glb`. Game akan mencoba memuatnya dan tetap memakai model prosedural jika gagal.
 
 ## Offline
-Three.js masih diambil dari jsDelivr CDN. Untuk offline penuh, unduh file `three.module.js`, letakkan misalnya di `vendor/three.module.js`, ubah import pada `js/game.js` menjadi `../vendor/three.module.js`, lalu tambahkan path itu ke array cache pada `sw.js`. Buka game online sekali sebelum mencoba offline.
+Three.js dan GLTFLoader masih dari CDN. Untuk offline penuh, simpan modul Three.js, GLTFLoader dan dependensinya secara lokal, ubah import di `js/game.js`, lalu masukkan file ke cache `sw.js`. Buka situs online sekali sebelum uji offline.
 
 ## Batasan
-Model karakter dan dunia dibangun dari geometri Three.js prosedural; belum menggunakan model GLB profesional atau animasi rigged. Audio belum ditambahkan. Data progres belum disinkronkan dengan Supabase. Versi ini adalah prototype untuk uji gameplay.
+Animasi prosedural bukan rigging profesional. Belum ada sinkronisasi Supabase. File GLB eksternal bersifat opsional dan tidak disertakan.
