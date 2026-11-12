@@ -1,15 +1,21 @@
-# Bear Adventure Prototype 0.4
+# Bear Adventure — Prototype 0.4.1 (Perbaikan tombol mulai)
 
-Pembaruan: beruang bipedal tepat 2 kaki + 2 tangan; animasi prosedural idle/berjalan/lari/lompat; efek suara Web Audio; progres koin, nyawa dan checkpoint tersimpan di LocalStorage; dukungan opsional GLB melalui `assets/bear.glb`; lingkungan hutan, desa, sungai, jembatan, gua, slime, checkpoint dan 12 koin.
+## Perbaikan
+- Menghapus import GLTFLoader yang belum digunakan pada versi 0.4. Ini mengurangi satu titik kegagalan saat modul eksternal gagal dimuat.
+- Binding tombol MULAI PETUALANGAN memakai `addEventListener` dan secara eksplisit mengaktifkan loop gameplay.
+- Memperbaiki class dialog pada HTML agar style panel mulai diterapkan.
+- Memperjelas lapisan klik (z-index dan pointer-events) pada tombol.
+- Menambahkan pesan kesalahan runtime agar kegagalan modul lebih mudah diketahui.
+- Cache Service Worker diperbarui agar browser mengambil file versi baru.
 
-## GitHub Pages
-Unggah seluruh isi folder ini ke root repository. Settings → Pages → Deploy from a branch → main → /(root) → Save.
+## Cara menjalankan
+1. Ekstrak ZIP.
+2. Upload seluruh isi folder `bear-adventure-prototype-04` ke GitHub (timpa file versi lama).
+3. Jika menggunakan GitHub Pages, tunggu deployment selesai.
+4. Buka ulang URL dengan refresh paksa / hapus cache situs bila perlu.
+5. Klik MULAI PETUALANGAN.
 
-## GLB
-Tidak ada model GLB profesional yang disertakan. Jika memiliki model bear rigged yang berlisensi sesuai, simpan sebagai `assets/bear.glb`. Game akan mencoba memuatnya dan tetap memakai model prosedural jika gagal.
+Gunakan HTTPS (GitHub Pages) atau Live Server. Jangan membuka `index.html` melalui `file://`, karena browser membatasi pemuatan JavaScript module dari CDN.
 
-## Offline
-Three.js dan GLTFLoader masih dari CDN. Untuk offline penuh, simpan modul Three.js, GLTFLoader dan dependensinya secara lokal, ubah import di `js/game.js`, lalu masukkan file ke cache `sw.js`. Buka situs online sekali sebelum uji offline.
-
-## Batasan
-Animasi prosedural bukan rigging profesional. Belum ada sinkronisasi Supabase. File GLB eksternal bersifat opsional dan tidak disertakan.
+## Catatan
+Game memerlukan browser yang mendukung WebGL dan koneksi internet untuk mengambil Three.js dari CDN.
