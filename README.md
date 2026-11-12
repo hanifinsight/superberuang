@@ -23,3 +23,8 @@ File model, tekstur, dan audio disimpan lokal serta masuk precache Service Worke
 
 ## Catatan
 Model beruang GLB berupa mesh statis, belum memiliki rig/skeleton. Gameplay perlu diuji melalui browser desktop dan HP setelah diunggah.
+
+
+## Perbaikan versi 0.5.3
+- Menambahkan import map untuk memetakan modul bare `three` yang digunakan GLTFLoader ke URL Three.js yang sama. Ini memperbaiki error `Failed to resolve module specifier 'three'` pada browser.
+- Cache Service Worker diperbarui agar browser mengambil file versi terbaru.

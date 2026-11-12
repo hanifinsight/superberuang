@@ -1,4 +1,4 @@
-const CACHE='bear-adventure-052';
+const CACHE='bear-adventure-053';
 const FILES=[
   "./",
   "./index.html",
