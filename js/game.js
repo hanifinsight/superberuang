@@ -1,15 +1,6 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
 
-window.addEventListener('error',e=>{
- const toast=document.querySelector('#toast');
- if(toast)toast.textContent='Terjadi kesalahan saat menjalankan game. Muat ulang halaman.';
- console.error('Bear Adventure runtime error:',e.error||e.message);
-});
-window.addEventListener('unhandledrejection',e=>{
- const toast=document.querySelector('#toast');
- if(toast)toast.textContent='Komponen game gagal dimuat. Periksa koneksi internet lalu muat ulang.';
- console.error('Bear Adventure module error:',e.reason);
-});
 const mount=document.querySelector('#game'),scene=new THREE.Scene();
 scene.background=new THREE.Color(0x9bd7ed);scene.fog=new THREE.Fog(0x9bd7ed,32,88);
 const camera=new THREE.PerspectiveCamera(62,innerWidth/innerHeight,.1,150);
@@ -17,7 +8,27 @@ const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'low-powe
 renderer.setPixelRatio(Math.min(devicePixelRatio,1.35));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;mount.appendChild(renderer.domElement);
 scene.add(new THREE.HemisphereLight(0xeaf8ff,0x607b43,2.0));const sun=new THREE.DirectionalLight(0xfff0d1,2.1);sun.position.set(-12,20,10);scene.add(sun);
 const M=c=>new THREE.MeshStandardMaterial({color:c,roughness:.92});
-const mat={grass:M(0x72b95b),path:M(0xcbb77e),bark:M(0x79502f),leaf:M(0x32844b),leaf2:M(0x58a84d),stone:M(0x87958b),wall:M(0xf0d5a4),roof:M(0xb94e35),bear:M(0x98603a),cream:M(0xe9c99c),dark:M(0x34251e),black:M(0x171412),water:new THREE.MeshStandardMaterial({color:0x42b8d0,roughness:.35,metalness:.08}),gold:new THREE.MeshStandardMaterial({color:0xffcf35,metalness:.5,roughness:.28,emissive:0x543500}),slime:M(0x78d64b)};
+const textureLoader=new THREE.TextureLoader();
+function loadTexture(file,rx=1,ry=1){
+ const tex=textureLoader.load('./assets/textures/'+file);
+ tex.wrapS=THREE.RepeatWrapping;tex.wrapT=THREE.RepeatWrapping;
+ tex.repeat.set(rx,ry);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=4;
+ return tex;
+}
+const mat={
+ grass:new THREE.MeshStandardMaterial({map:loadTexture('grass.png',18,18),roughness:1}),
+ path:new THREE.MeshStandardMaterial({map:loadTexture('dirt-path.png',2,18),roughness:1}),
+ bark:new THREE.MeshStandardMaterial({map:loadTexture('bark.png',1,2),roughness:1}),
+ leaf:new THREE.MeshStandardMaterial({map:loadTexture('leaves.png',2,2),roughness:1}),
+ leaf2:new THREE.MeshStandardMaterial({map:loadTexture('leaves.png',2,2),color:0x9bd58b,roughness:1}),
+ stone:new THREE.MeshStandardMaterial({map:loadTexture('stone.png',2,2),roughness:1}),
+ wall:new THREE.MeshStandardMaterial({map:loadTexture('plaster.png',2,2),roughness:1}),
+ roof:new THREE.MeshStandardMaterial({map:loadTexture('roof.png',2,2),roughness:1}),
+ bear:M(0x98603a),cream:M(0xe9c99c),dark:M(0x34251e),black:M(0x171412),
+ water:new THREE.MeshStandardMaterial({map:loadTexture('water.png',3,2),color:0x9de9f4,roughness:.35,metalness:.08}),
+ gold:new THREE.MeshStandardMaterial({color:0xffcf35,metalness:.5,roughness:.28,emissive:0x543500}),
+ slime:M(0x78d64b)
+};
 function add(geo,m,x=0,y=0,z=0,p=scene){const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);p.add(o);return o}
 function box(w,h,d,m,x,y,z,p=scene){return add(new THREE.BoxGeometry(w,h,d),m,x,y,z,p)}
 function group(x=0,y=0,z=0,p=scene){const g=new THREE.Group();g.position.set(x,y,z);p.add(g);return g}
@@ -45,6 +56,15 @@ add(new THREE.CylinderGeometry(2.7,2.7,1.1,12,1,true,0,Math.PI),mat.stone,0,1.4,
 add(new THREE.CircleGeometry(1.65,18),mat.dark,0,1.35,.2,cave);
 box(7,.3,2,mat.stone,0,.15,-30);
 
+
+// Expanded exploration zone: meadow, small ruins and extra trees
+const meadow=add(new THREE.PlaneGeometry(34,18),M(0x83c96a),0,-.12,-39);meadow.rotation.x=-Math.PI/2;
+for(let i=0;i<18;i++){const x=-15+(i%6)*6,z=-34-Math.floor(i/6)*7;tree(x,z,.48+(i%3)*.08)}
+// Low stone ruins to make the northern clearing feel like a destination
+for(const [x,z] of [[-10,-39],[-7,-42],[8,-40],[11,-36]]){box(1.3,1.1,.8,mat.stone,x,.5,z);box(.9,.25,.9,mat.stone,x,.95,z)}
+// Decorative path markers
+for(const z of [-27,-32,-37]){const sign=group(3,0,z);box(.12,1,.12,mat.bark,0,.5,0,sign);box(.9,.42,.12,mat.wall,.42,.82,0,sign)}
+
 // Character: explicitly bipedal bear — TWO LEGS + TWO ARMS
 const bear=group(0,0,4),head=group(0,1.95,0,bear);
 ball(.57,1,.95,.73,mat.bear,0,1.12,0,bear);
@@ -59,14 +79,72 @@ for(const x of [-.29,.29]){const pivot=group(x,.55,0,bear);ball(.22,1,1,1,mat.be
 const arms=[]; // exactly TWO arms
 for(const x of [-.53,.53]){const pivot=group(x,1.48,0,bear);ball(.17,1,1,1,mat.bear,0,-.22,.02,pivot);arms.push(pivot)}
 const bearStart=new THREE.Vector3(0,0,4);bear.position.copy(bearStart);
+const proceduralBearParts=[...bear.children];
+let bearModel=null, npcModel=null;
+const modelLoader=new GLTFLoader();
+function prepareModel(root, scale=1){
+ root.scale.setScalar(scale);
+ root.position.y=-.12;
+ root.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false;if(o.material){o.material.side=THREE.DoubleSide;}}});
+ return root;
+}
+modelLoader.load('./assets/models/bear.glb', gltf=>{
+ bearModel=prepareModel(gltf.scene, .9);
+ proceduralBearParts.forEach(part=>part.visible=false);
+ bear.add(bearModel);
+ npcModel=prepareModel(gltf.scene.clone(true), .78);
+ npcModel.position.set(0,-.12,0);
+ npc.children.forEach(part=>part.visible=false);
+ npc.add(npcModel);
+ say('Model beruang 3D berhasil dimuat.');
+}, undefined, err=>{
+ console.warn('Model bear.glb tidak dapat dimuat; memakai karakter prosedural.',err);
+ say('Mode karakter cadangan aktif.');
+});
+
 
 // Persistent progress and sound
-const keys={};const SAVE='bearAdventure04';
+const keys={};const SAVE='bearAdventure05';
 let saved={};try{saved=JSON.parse(localStorage.getItem(SAVE)||'{}')}catch(e){}
 let collected=new Set(saved.collected||[]),active=false,vy=0,onGround=true,camYaw=0,camPitch=.22,coinsTaken=collected.size,lives=saved.lives||3,invuln=0,toastTimer=0;
-function save(){try{localStorage.setItem(SAVE,JSON.stringify({collected:[...collected],lives,checkpoint:checkpointReached}))}catch(err){console.warn('Progress tidak dapat disimpan:',err)}}
+function save(){try{localStorage.setItem(SAVE,JSON.stringify({collected:[...collected],lives,checkpoint:checkpointReached,questStage}))}catch(e){console.warn('Progress tidak dapat disimpan pada browser ini.',e)}}
 let audioCtx=null;
-function sound(type){try{audioCtx ||= new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);const now=audioCtx.currentTime,pr={coin:[880,1320,.12],jump:[260,430,.14],hurt:[180,85,.22],checkpoint:[520,900,.3],step:[130,100,.035]},v=pr[type]||pr.coin;o.type=type==='hurt'?'sawtooth':'sine';o.frequency.setValueAtTime(v[0],now);o.frequency.exponentialRampToValueAtTime(v[1],now+v[2]);g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(.09,now+.01);g.gain.exponentialRampToValueAtTime(.0001,now+v[2]);o.start();o.stop(now+v[2]+.02)}catch(e){}}
+const soundPaths={
+ coin:'coin.wav',jump:'jump.wav',hurt:'hurt.wav',checkpoint:'checkpoint.wav',
+ step:'step.wav',dialog:'dialog.wav'
+};
+const soundAudio={};
+for(const [key,file] of Object.entries(soundPaths)){
+ const a=new Audio('./assets/audio/'+file);a.preload='auto';
+ a.volume=key==='step'?.28:.58;soundAudio[key]=a;
+}
+const forestAudio=new Audio('./assets/audio/forest-ambience.wav');
+forestAudio.loop=true;forestAudio.volume=.20;forestAudio.preload='auto';
+let ambienceStarted=false;
+function startAudio(){
+ if(ambienceStarted)return;
+ ambienceStarted=true;
+ forestAudio.play().catch(()=>{ambienceStarted=false;});
+}
+function fallbackSound(type){
+ try{
+  audioCtx ||= new (window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended')audioCtx.resume();
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.connect(g);g.connect(audioCtx.destination);
+  const now=audioCtx.currentTime,pr={coin:[880,1320,.12],jump:[260,430,.14],hurt:[180,85,.22],checkpoint:[520,900,.3],step:[130,100,.035],dialog:[520,660,.075]},v=pr[type]||pr.coin;
+  o.type=type==='hurt'?'sawtooth':'sine';o.frequency.setValueAtTime(v[0],now);
+  o.frequency.exponentialRampToValueAtTime(v[1],now+v[2]);
+  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(.07,now+.01);
+  g.gain.exponentialRampToValueAtTime(.0001,now+v[2]);o.start();o.stop(now+v[2]+.02);
+ }catch(e){}
+}
+function sound(type){
+ const a=soundAudio[type];
+ if(!a){fallbackSound(type);return;}
+ try{a.pause();a.currentTime=0;const p=a.play();if(p&&p.catch)p.catch(()=>fallbackSound(type));}
+ catch(e){fallbackSound(type);}
+}
 
 // Coins
 const coins=[];for(let i=0;i<12;i++){const a=i/12*Math.PI*2,r=5.8+(i%3)*.55,c=add(new THREE.TorusGeometry(.31,.1,8,16),mat.gold,Math.cos(a)*r,.95,Math.sin(a)*r-5);c.rotation.x=Math.PI/2;if(collected.has(i))c.visible=false;coins.push(c)}
@@ -77,27 +155,56 @@ const enemyHome=enemy.position.clone();let enemyPhase=0;
 
 // Checkpoint flag
 const checkpoint=group(0,0,-24);box(.12,2.8,.12,mat.bark,0,1.4,0,checkpoint);const flag=add(new THREE.PlaneGeometry(1.1,.65),M(0xffdf57),.58,2.35,0,checkpoint);flag.rotation.y=-.12;
+
 let checkpointReached=!!saved.checkpoint;
+
+// Friendly NPC: Pak Beruang, with a simple waving animation
+const npc=group(-5,0,-9);
+ball(.43,1,.95,.78,mat.bear,0,1.05,0,npc);
+ball(.34,1,1,.9,mat.bear,0,1.92,0,npc);
+ball(.16,1,1,1,mat.bear,-.24,2.18,0,npc);ball(.16,1,1,1,mat.bear,.24,2.18,0,npc);
+ball(.18,1,.7,.8,mat.cream,0,1.95,.29,npc);ball(.045,1,1,.5,mat.black,0,1.98,.45,npc);
+ball(.08,1,1,.8,mat.cream,0,.98,.35,npc);
+const npcArms=[];
+for(const x of [-.48,.48]){const a=group(x,1.35,0,npc);ball(.14,1,1,1,mat.bear,0,-.22,0,a);npcArms.push(a)}
+// Small name plate above the villager
+const namePlate=group(-5,2.75,-9);box(1.8,.32,.08,M(0x24523a),0,0,0,namePlate);
+
 
 // State, controls and UI
 const toast=document.querySelector('#toast');
 function say(t){toast.textContent=t;toastTimer=2.2}
-function updateHUD(){document.querySelector('#coins').textContent=coinsTaken;document.querySelector('#lives').textContent=lives;document.querySelector('#mission').textContent=coinsTaken>=12?'Misi koin selesai! Menuju pos pemeriksaan':'Misi: kumpulkan 12 koin dan capai pos pemeriksaan'}
-addEventListener('keydown',e=>{keys[e.code]=true;if(['Space','ArrowUp','ArrowDown'].includes(e.code))e.preventDefault();if(e.code==='Space')jump()});
+let questStage=Number(saved.questStage||0); // 0 meet NPC, 1 collect 6 coins, 2 report back
+function updateQuest(){
+ const q=document.querySelector('#quest');
+ if(questStage===0)q.textContent='MISI 1/3 · Temui Pak Beruang di desa (tekan E)';
+ else if(questStage===1)q.textContent='MISI 2/3 · Kumpulkan 6 koin untuk Pak Beruang ('+Math.min(coinsTaken,6)+'/6)';
+ else if(questStage===2)q.textContent='MISI 3/3 · Kembali ke Pak Beruang dan tekan E';
+ else q.textContent='MISI SELESAI · Terima kasih, penjelajah!';
+}
+function updateHUD(){document.querySelector('#coins').textContent=coinsTaken;document.querySelector('#lives').textContent=lives;document.querySelector('#mission').textContent=coinsTaken>=12?'Koin terkumpul! Jelajahi area dan capai checkpoint':'Jelajahi hutan, kumpulkan koin, hindari slime';updateQuest()}
+function interact(){
+ sound('dialog');
+ const near=Math.hypot(npc.position.x-bear.position.x,npc.position.z-bear.position.z);
+ if(near>2.7){say('Dekati Pak Beruang untuk berbicara.');return}
+ if(questStage===0){questStage=1;say('Pak Beruang: Tolong kumpulkan 6 koin di sekitar hutan!');}
+ else if(questStage===1&&coinsTaken>=6){questStage=2;say('Pak Beruang: Hebat! Kembali lagi untuk menyelesaikan misi.');}
+ else if(questStage===1){say('Pak Beruang: Aku masih menunggu 6 koin.');}
+ else if(questStage===2){questStage=3;say('Misi selesai! Kamu pahlawan Hutan Ceria! 🎉');sound('checkpoint');}
+ else say('Pak Beruang: Terima kasih sudah membantu desa!');
+ save();updateHUD();
+}
+
+addEventListener('keydown',e=>{keys[e.code]=true;if(['Space','ArrowUp','ArrowDown'].includes(e.code))e.preventDefault();if(e.code==='Space')jump();if(e.code==='KeyE'&&active)interact()});
 addEventListener('keyup',e=>keys[e.code]=false);function jump(){if(active&&onGround){vy=7.3;onGround=false}}
-let dragging=false,lx=0,ly=0;renderer.domElement.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&active){dragging=true;lx=e.clientX;ly=e.clientY}});addEventListener('pointerup',()=>dragging=false);addEventListener('pointermove',e=>{if(dragging){camYaw-=(e.clientX-lx)*.006;camPitch=THREE.MathUtils.clamp(camPitch+(e.clientY-ly)*.003,-.05,.7);lx=e.clientX;ly=e.clientY}});
+let dragging=false,lx=0,ly=0;renderer.domElement.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'){dragging=true;lx=e.clientX;ly=e.clientY}});addEventListener('pointerup',()=>dragging=false);addEventListener('pointermove',e=>{if(dragging){camYaw-=(e.clientX-lx)*.006;camPitch=THREE.MathUtils.clamp(camPitch+(e.clientY-ly)*.003,-.05,.7);lx=e.clientX;ly=e.clientY}});
 let sx=0,sy=0,stick=document.querySelector('#stick'),knob=document.querySelector('#knob'),stickOn=false;
 function stickMove(e){const r=stick.getBoundingClientRect();let dx=e.clientX-r.left-r.width/2,dy=e.clientY-r.top-r.height/2,l=Math.hypot(dx,dy),m=38;if(l>m){dx*=m/l;dy*=m/l}sx=dx/m;sy=dy/m;knob.style.transform=`translate(${dx}px,${dy}px)`}
 stick.addEventListener('pointerdown',e=>{stickOn=true;stick.setPointerCapture(e.pointerId);stickMove(e)});stick.addEventListener('pointermove',e=>{if(stickOn)stickMove(e)});function resetStick(){stickOn=false;sx=sy=0;knob.style.transform='translate(0,0)'}stick.addEventListener('pointerup',resetStick);stick.addEventListener('pointercancel',resetStick);document.querySelector('#jump').addEventListener('pointerdown',jump);
-const startButton=document.querySelector('#start');
-startButton.type='button';
-startButton.addEventListener('click',()=>{
- active=true;
- document.querySelector('#overlay').style.display='none';
- startButton.blur();
-});
+const interactBtn=document.createElement('button');interactBtn.id='interact';interactBtn.textContent='TEKAN E · BICARA';document.querySelector('#hud').appendChild(interactBtn);interactBtn.addEventListener('pointerdown',e=>{e.preventDefault();if(active)interact()});
+document.querySelector('#start').onclick=()=>{active=true;startAudio();document.querySelector('#overlay').style.display='none'};
 function blocked(x,z){return obstacles.some(o=>(x-o.x)**2+(z-o.z)**2<(o.r+.52)**2)}
-function movePlayer(dx,dz){const nx=bear.position.x+dx,nz=bear.position.z+dz;if(!blocked(nx,bear.position.z))bear.position.x=nx;if(!blocked(bear.position.x,nz))bear.position.z=nz;bear.position.x=THREE.MathUtils.clamp(bear.position.x,-16,16);bear.position.z=THREE.MathUtils.clamp(bear.position.z,-34,18)}
+function movePlayer(dx,dz){const nx=bear.position.x+dx,nz=bear.position.z+dz;if(!blocked(nx,bear.position.z))bear.position.x=nx;if(!blocked(bear.position.x,nz))bear.position.z=nz;bear.position.x=THREE.MathUtils.clamp(bear.position.x,-23,23);bear.position.z=THREE.MathUtils.clamp(bear.position.z,-48,18)}
 function hurt(){if(invuln>0)return;lives--;invuln=1.8;say('Aduh! Terkena slime.');save();sound('hurt');if(lives<=0){lives=3;bear.position.copy(checkpointReached?new THREE.Vector3(0,0,-24):bearStart);say('Coba lagi! Kembali ke titik aman.')}else bear.position.copy(checkpointReached?new THREE.Vector3(0,0,-24):bearStart);updateHUD()}
 const clock=new THREE.Clock();
 function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.04),t=clock.elapsedTime;
@@ -110,14 +217,20 @@ function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDel
   legs.forEach((p,i)=>{p.rotation.x=moving&&onGround?Math.sin(t*10+i*Math.PI)*.62:THREE.MathUtils.damp(p.rotation.x,0,8,dt);p.rotation.z=moving&&onGround?Math.sin(t*5+i*Math.PI)*.035:0});
   arms.forEach((p,i)=>{p.rotation.x=moving&&onGround?Math.sin(t*10+i*Math.PI+Math.PI)*.48:THREE.MathUtils.damp(p.rotation.x,0,8,dt);p.rotation.z=(i===0?-.08:.08)+(moving?Math.sin(t*10+i*Math.PI)*.04:0)});
   head.rotation.x=onGround?Math.sin(t*2)*.025:-.08;
+  if(bearModel){bearModel.position.y=-.12+(moving&&onGround?Math.abs(Math.sin(t*10))*.045:Math.sin(t*1.8)*.018);bearModel.rotation.z=moving&&onGround?Math.sin(t*10)*.018:0;}
+  if(npcModel)npcModel.rotation.y=Math.sin(t*.7)*.045;
   if(moving&&onGround&&Math.floor(t*3)!==Math.floor((t-dt)*3))sound('step');
   arms.forEach((p,i)=>p.rotation.x=moving&&onGround?Math.sin(t*11+i*Math.PI+Math.PI)*.4:THREE.MathUtils.damp(p.rotation.x,0,8,dt));
   bear.visible=invuln<=0||Math.floor(t*12)%2===0;
   coins.forEach((c,i)=>{if(!c.visible)return;c.rotation.z+=dt*2;c.position.y=.95+Math.sin(t*2+i)*.1;const dx=c.position.x-bear.position.x,dz=c.position.z-bear.position.z;if(dx*dx+dz*dz<1.15&&bear.position.y<1.15){c.visible=false;collected.add(i);coinsTaken=collected.size;updateHUD();save();sound('coin');say('Koin ditemukan! 🪙')}});
   enemyPhase+=dt;enemy.position.x=enemyHome.x+Math.sin(enemyPhase*1.25)*2.3;enemy.position.z=enemyHome.z+Math.cos(enemyPhase*.8)*1.1;enemy.rotation.y=Math.PI/2+Math.sin(enemyPhase)*.25;
   if(Math.hypot(enemy.position.x-bear.position.x,enemy.position.z-bear.position.z)<1.05&&bear.position.y<1.1)hurt();
+  const npcNear=Math.hypot(npc.position.x-bear.position.x,npc.position.z-bear.position.z)<2.7;
+  npcArms[1].rotation.x=Math.sin(t*2.4)*.15;
+  npcArms[0].rotation.z=npcNear?Math.sin(t*5)*.35:-.08;
+  const prompt=document.querySelector('#interact');if(prompt)prompt.style.display=npcNear?'block':'none';
   if(!checkpointReached&&Math.hypot(bear.position.x,bear.position.z+24)<2.2){checkpointReached=true;say('Pos pemeriksaan tercapai!');updateHUD();save();sound('checkpoint')}
-  if(coinsTaken>=12&&checkpointReached){missionText('PETUALANGAN 0.4 SELESAI! 🎉')}if(window.__bearMixer)window.__bearMixer.update(dt);
+  if(coinsTaken>=12&&checkpointReached&&questStage===3){missionText('PETUALANGAN 0.5 SELESAI! 🎉')}
  }
  const target=new THREE.Vector3(bear.position.x,bear.position.y+1.25,bear.position.z),d=8.2,h=Math.cos(camPitch)*d,pos=new THREE.Vector3(target.x+Math.sin(camYaw)*h,target.y+2+Math.sin(camPitch)*d,target.z+Math.cos(camYaw)*h);camera.position.lerp(pos,.12);camera.lookAt(target);renderer.render(scene,camera)
 }
