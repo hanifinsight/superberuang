@@ -1,10 +1,10 @@
 {
-  "name": "Bear Adventure 0.5.1",
+  "name": "Bear Adventure 0.6",
   "short_name": "BearAdventure",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#183326",
   "theme_color": "#183326",
   "orientation": "landscape",
-  "description": "Game petualangan 3D beruang untuk laptop dan HP."
+  "description": "Petualangan 3D beruang dengan animasi lari dan tiga jenis musuh."
 }

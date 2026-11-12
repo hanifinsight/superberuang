@@ -1,30 +1,25 @@
-# Bear Adventure — Prototype 0.5.2
+# Bear Adventure – Prototype 0.6
 
-## Penambahan versi 0.5.2
-- Seluruh tekstur lokal sudah disediakan dan dipakai oleh material Three.js: rumput, jalur tanah, batang pohon, daun, batu, dinding, atap, dan air.
-- Audio lokal sudah disediakan: ambience hutan loop serta efek koin, lompat, terkena musuh, checkpoint, langkah, dan dialog.
-- Audio ambience mulai setelah pemain menekan tombol MULAI PETUALANGAN (mengikuti kebijakan autoplay browser).
-- Service worker memasukkan seluruh tekstur PNG dan audio WAV ke cache.
-- Audio Web Audio sintetis tetap menjadi fallback jika audio file gagal dimainkan.
+Petualangan 3D third-person ringan berbasis Three.js, siap diunggah ke GitHub Pages.
 
-## Struktur aset
-- `assets/models/bear.glb`
-- `assets/textures/*.png`
-- `assets/audio/*.wav`
+## Fitur versi 0.6
+- Karakter beruang prosedural dengan rig sederhana: dua lengan dan dua kaki bergerak independen saat berjalan dan berlari.
+- Animasi lari, lompat, ayunan tangan-kaki, kemiringan badan, dan gerak kepala.
+- Tiga jenis musuh: slime patroli, kura-kura bertempurung, dan lebah yang terbang serta mengejar pemain saat dekat.
+- Area hutan, desa, sungai, jembatan, padang rumput, reruntuhan, gua, dan sarang lebah.
+- Misi NPC Pak Beruang, 12 koin, checkpoint, nyawa, suara, tekstur, dan penyimpanan progres lokal.
+- Kontrol laptop: WASD/arrow, Space lompat, Shift lari, E interaksi, drag mouse untuk kamera.
+- Kontrol HP: joystick, tombol LARI, LOMPAT, dan interaksi.
 
-## Menjalankan
-Gunakan VS Code Live Server atau GitHub Pages. Jangan membuka `index.html` langsung dengan double-click karena browser membatasi ES Modules dan pemuatan aset pada `file://`.
+## Cara menjalankan / deploy
+1. Ekstrak ZIP.
+2. Unggah seluruh isi folder `bear-adventure-prototype-06` ke repository GitHub (boleh di root repository).
+3. Aktifkan GitHub Pages dari branch dan folder yang digunakan.
+4. Buka alamat HTTPS GitHub Pages. Game memuat Three.js dari jsDelivr CDN, jadi koneksi internet diperlukan.
+5. Jika versi lama masih tampil, lakukan hard refresh (`Ctrl + Shift + R`) atau hapus cache situs.
 
-## Kontrol
-WASD / panah untuk bergerak, Space untuk lompat, Shift untuk lari, E untuk berbicara dengan NPC. Di HP gunakan joystick dan tombol layar.
+## Catatan teknis
+Model GLB versi sebelumnya tetap disimpan sebagai aset referensi, tetapi pemain versi 0.6 menggunakan karakter prosedural ber-pivot agar animasi anggota tubuh berjalan konsisten tanpa ketergantungan pada skeleton GLB.
 
-## Offline
-File model, tekstur, dan audio disimpan lokal serta masuk precache Service Worker. Library Three.js dan GLTFLoader masih diambil dari CDN, sehingga koneksi internet tetap dibutuhkan untuk pemuatan awal library. Setelah library CDN berhasil dicache oleh browser, ketersediaan offline bergantung pada cache browser dan service worker.
-
-## Catatan
-Model beruang GLB berupa mesh statis, belum memiliki rig/skeleton. Gameplay perlu diuji melalui browser desktop dan HP setelah diunggah.
-
-
-## Perbaikan versi 0.5.3
-- Menambahkan import map untuk memetakan modul bare `three` yang digunakan GLTFLoader ke URL Three.js yang sama. Ini memperbaiki error `Failed to resolve module specifier 'three'` pada browser.
-- Cache Service Worker diperbarui agar browser mengambil file versi terbaru.
+## Batasan prototype
+Belum ada sistem combat untuk mengalahkan musuh, boss, atau penyimpanan cloud. Progres disimpan di browser perangkat masing-masing.

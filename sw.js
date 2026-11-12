@@ -1,10 +1,11 @@
-const CACHE='bear-adventure-053';
+const CACHE='bear-adventure-060';
 const FILES=[
   "./",
   "./index.html",
   "./css/style.css",
   "./js/game.js",
   "./manifest.json",
+  "./assets/favicon.svg",
   "./assets/models/bear.glb",
   "./assets/textures/bark.png",
   "./assets/textures/dirt-path.png",
