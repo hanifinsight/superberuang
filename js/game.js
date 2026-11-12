@@ -1,5 +1,4 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
-import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
 
 const mount=document.querySelector('#game'),scene=new THREE.Scene();
 scene.background=new THREE.Color(0x9bd7ed);scene.fog=new THREE.Fog(0x9bd7ed,32,88);
@@ -27,7 +26,7 @@ const mat={
  bear:M(0x98603a),cream:M(0xe9c99c),dark:M(0x34251e),black:M(0x171412),
  water:new THREE.MeshStandardMaterial({map:loadTexture('water.png',3,2),color:0x9de9f4,roughness:.35,metalness:.08}),
  gold:new THREE.MeshStandardMaterial({color:0xffcf35,metalness:.5,roughness:.28,emissive:0x543500}),
- slime:M(0x78d64b)
+ slime:M(0x78d64b),shell:M(0x3c8050),shellLight:M(0x79b86b),yellow:M(0xffd43b),stripe:M(0x33251c),wing:new THREE.MeshStandardMaterial({color:0xe7f7ff,transparent:true,opacity:.72,roughness:.25})
 };
 function add(geo,m,x=0,y=0,z=0,p=scene){const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);p.add(o);return o}
 function box(w,h,d,m,x,y,z,p=scene){return add(new THREE.BoxGeometry(w,h,d),m,x,y,z,p)}
@@ -79,32 +78,12 @@ for(const x of [-.29,.29]){const pivot=group(x,.55,0,bear);ball(.22,1,1,1,mat.be
 const arms=[]; // exactly TWO arms
 for(const x of [-.53,.53]){const pivot=group(x,1.48,0,bear);ball(.17,1,1,1,mat.bear,0,-.22,.02,pivot);arms.push(pivot)}
 const bearStart=new THREE.Vector3(0,0,4);bear.position.copy(bearStart);
-const proceduralBearParts=[...bear.children];
-let bearModel=null, npcModel=null;
-const modelLoader=new GLTFLoader();
-function prepareModel(root, scale=1){
- root.scale.setScalar(scale);
- root.position.y=-.12;
- root.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false;if(o.material){o.material.side=THREE.DoubleSide;}}});
- return root;
-}
-modelLoader.load('./assets/models/bear.glb', gltf=>{
- bearModel=prepareModel(gltf.scene, .9);
- proceduralBearParts.forEach(part=>part.visible=false);
- bear.add(bearModel);
- npcModel=prepareModel(gltf.scene.clone(true), .78);
- npcModel.position.set(0,-.12,0);
- npc.children.forEach(part=>part.visible=false);
- npc.add(npcModel);
- say('Model beruang 3D berhasil dimuat.');
-}, undefined, err=>{
- console.warn('Model bear.glb tidak dapat dimuat; memakai karakter prosedural.',err);
- say('Mode karakter cadangan aktif.');
-});
-
+// The player uses a procedural articulated rig. Every arm and leg has its own pivot,
+// so the running cycle remains visible and responsive on all devices.
+const torso=bear.children[0];
 
 // Persistent progress and sound
-const keys={};const SAVE='bearAdventure05';
+const keys={};const SAVE='bearAdventure06';
 let saved={};try{saved=JSON.parse(localStorage.getItem(SAVE)||'{}')}catch(e){}
 let collected=new Set(saved.collected||[]),active=false,vy=0,onGround=true,camYaw=0,camPitch=.22,coinsTaken=collected.size,lives=saved.lives||3,invuln=0,toastTimer=0;
 function save(){try{localStorage.setItem(SAVE,JSON.stringify({collected:[...collected],lives,checkpoint:checkpointReached,questStage}))}catch(e){console.warn('Progress tidak dapat disimpan pada browser ini.',e)}}
@@ -149,9 +128,34 @@ function sound(type){
 // Coins
 const coins=[];for(let i=0;i<12;i++){const a=i/12*Math.PI*2,r=5.8+(i%3)*.55,c=add(new THREE.TorusGeometry(.31,.1,8,16),mat.gold,Math.cos(a)*r,.95,Math.sin(a)*r-5);c.rotation.x=Math.PI/2;if(collected.has(i))c.visible=false;coins.push(c)}
 
-// One simple patrol slime enemy
-const enemy=group(4,0,-12);ball(.52,1.15,.8,.9,mat.slime,0,.48,0,enemy);ball(.065,1,1,.5,mat.black,-.18,.58,.43,enemy);ball(.065,1,1,.5,mat.black,.18,.58,.43,enemy);
-const enemyHome=enemy.position.clone();let enemyPhase=0;
+// Three enemy types: slime, a shell-protected turtle, and a flying bee.
+const enemies=[];
+function makeSlime(x,z){
+ const g=group(x,0,z);ball(.52,1.15,.8,.9,mat.slime,0,.48,0,g);ball(.065,1,1,.5,mat.black,-.18,.58,.43,g);ball(.065,1,1,.5,mat.black,.18,.58,.43,g);
+ enemies.push({type:'slime',root:g,home:g.position.clone(),phase:Math.random()*6,speed:1.25,range:2.3});
+}
+function makeTurtle(x,z){
+ const g=group(x,0,z),body=group(0,.43,0,g);
+ ball(.48,1.2,.58,1.05,mat.shellLight,0,0,0,body);
+ const shell=ball(.55,1.18,.82,1.08,mat.shell,0,.24,-.02,body);shell.rotation.x=-.12;
+ ball(.17,1,1,1,mat.shellLight,0,.12,.48,body);
+ ball(.23,1,.85,.9,mat.shellLight,0,.18,.72,body);
+ ball(.035,1,1,.5,mat.black,-.09,.22,.91,body);ball(.035,1,1,.5,mat.black,.09,.22,.91,body);
+ const feet=[];for(const x0 of [-.34,.34])for(const z0 of [-.32,.32]){const f=group(x0,-.12,z0,body);ball(.14,1,.8,1,mat.shellLight,0,0,0,f);feet.push(f)}
+ enemies.push({type:'turtle',root:g,body,feet,home:g.position.clone(),phase:Math.random()*6,speed:.8,range:2.6});
+}
+function makeBee(x,z){
+ const g=group(x,1.9,z),body=group(0,0,0,g);
+ ball(.28,1.15,.9,1.25,mat.yellow,0,0,0,body);
+ for(const zz of [-.18,.18])box(.48,.43,.12,mat.stripe,0,0,zz,body);
+ ball(.17,1,1,.9,mat.yellow,0,.02,.34,body);
+ ball(.035,1,1,.5,mat.black,-.07,.08,.48,body);ball(.035,1,1,.5,mat.black,.07,.08,.48,body);
+ const wings=[];for(const side of [-1,1]){const w=ball(.22,.7,.12,1.45,mat.wing,side*.23,.25,0,body,10);w.rotation.z=side*-.35;wings.push(w)}
+ enemies.push({type:'bee',root:g,body,wings,home:g.position.clone(),phase:Math.random()*6,speed:1.5,range:3.1});
+}
+makeSlime(4,-12);makeTurtle(-10,-27);makeBee(7, -36);
+// A visible hive marks the bee territory in the meadow.
+const hive=group(9,0,-37);ball(.42,.72,1,.72,mat.gold,0,1.45,0,hive);ball(.12,1,1,.5,mat.dark,0,1.2,.31,hive);box(.12,.55,.12,mat.bark,0,.55,0,hive);
 
 // Checkpoint flag
 const checkpoint=group(0,0,-24);box(.12,2.8,.12,mat.bark,0,1.4,0,checkpoint);const flag=add(new THREE.PlaneGeometry(1.1,.65),M(0xffdf57),.58,2.35,0,checkpoint);flag.rotation.y=-.12;
@@ -182,7 +186,7 @@ function updateQuest(){
  else if(questStage===2)q.textContent='MISI 3/3 · Kembali ke Pak Beruang dan tekan E';
  else q.textContent='MISI SELESAI · Terima kasih, penjelajah!';
 }
-function updateHUD(){document.querySelector('#coins').textContent=coinsTaken;document.querySelector('#lives').textContent=lives;document.querySelector('#mission').textContent=coinsTaken>=12?'Koin terkumpul! Jelajahi area dan capai checkpoint':'Jelajahi hutan, kumpulkan koin, hindari slime';updateQuest()}
+function updateHUD(){document.querySelector('#coins').textContent=coinsTaken;document.querySelector('#lives').textContent=lives;document.querySelector('#mission').textContent=coinsTaken>=12?'Koin terkumpul! Jelajahi area dan capai checkpoint':'Jelajahi hutan, kumpulkan koin, hindari slime, kura-kura, dan lebah';updateQuest()}
 function interact(){
  sound('dialog');
  const near=Math.hypot(npc.position.x-bear.position.x,npc.position.z-bear.position.z);
@@ -198,33 +202,50 @@ function interact(){
 addEventListener('keydown',e=>{keys[e.code]=true;if(['Space','ArrowUp','ArrowDown'].includes(e.code))e.preventDefault();if(e.code==='Space')jump();if(e.code==='KeyE'&&active)interact()});
 addEventListener('keyup',e=>keys[e.code]=false);function jump(){if(active&&onGround){vy=7.3;onGround=false}}
 let dragging=false,lx=0,ly=0;renderer.domElement.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'){dragging=true;lx=e.clientX;ly=e.clientY}});addEventListener('pointerup',()=>dragging=false);addEventListener('pointermove',e=>{if(dragging){camYaw-=(e.clientX-lx)*.006;camPitch=THREE.MathUtils.clamp(camPitch+(e.clientY-ly)*.003,-.05,.7);lx=e.clientX;ly=e.clientY}});
-let sx=0,sy=0,stick=document.querySelector('#stick'),knob=document.querySelector('#knob'),stickOn=false;
+let sx=0,sy=0,stick=document.querySelector('#stick'),knob=document.querySelector('#knob'),stickOn=false,mobileSprint=false;
 function stickMove(e){const r=stick.getBoundingClientRect();let dx=e.clientX-r.left-r.width/2,dy=e.clientY-r.top-r.height/2,l=Math.hypot(dx,dy),m=38;if(l>m){dx*=m/l;dy*=m/l}sx=dx/m;sy=dy/m;knob.style.transform=`translate(${dx}px,${dy}px)`}
 stick.addEventListener('pointerdown',e=>{stickOn=true;stick.setPointerCapture(e.pointerId);stickMove(e)});stick.addEventListener('pointermove',e=>{if(stickOn)stickMove(e)});function resetStick(){stickOn=false;sx=sy=0;knob.style.transform='translate(0,0)'}stick.addEventListener('pointerup',resetStick);stick.addEventListener('pointercancel',resetStick);document.querySelector('#jump').addEventListener('pointerdown',jump);
+const sprintBtn=document.querySelector('#sprint');if(sprintBtn){sprintBtn.addEventListener('pointerdown',e=>{e.preventDefault();mobileSprint=true});['pointerup','pointercancel','pointerleave'].forEach(ev=>sprintBtn.addEventListener(ev,()=>mobileSprint=false));}
 const interactBtn=document.createElement('button');interactBtn.id='interact';interactBtn.textContent='TEKAN E · BICARA';document.querySelector('#hud').appendChild(interactBtn);interactBtn.addEventListener('pointerdown',e=>{e.preventDefault();if(active)interact()});
-document.querySelector('#start').onclick=()=>{active=true;startAudio();document.querySelector('#overlay').style.display='none'};
+document.querySelector('#start').addEventListener('click',()=>{active=true;startAudio();document.querySelector('#overlay').style.display='none';say('Petualangan dimulai! Temui Pak Beruang.');});
 function blocked(x,z){return obstacles.some(o=>(x-o.x)**2+(z-o.z)**2<(o.r+.52)**2)}
 function movePlayer(dx,dz){const nx=bear.position.x+dx,nz=bear.position.z+dz;if(!blocked(nx,bear.position.z))bear.position.x=nx;if(!blocked(bear.position.x,nz))bear.position.z=nz;bear.position.x=THREE.MathUtils.clamp(bear.position.x,-23,23);bear.position.z=THREE.MathUtils.clamp(bear.position.z,-48,18)}
-function hurt(){if(invuln>0)return;lives--;invuln=1.8;say('Aduh! Terkena slime.');save();sound('hurt');if(lives<=0){lives=3;bear.position.copy(checkpointReached?new THREE.Vector3(0,0,-24):bearStart);say('Coba lagi! Kembali ke titik aman.')}else bear.position.copy(checkpointReached?new THREE.Vector3(0,0,-24):bearStart);updateHUD()}
+function hurt(){if(invuln>0)return;lives--;invuln=1.8;say('Aduh! Musuh menyerang!');save();sound('hurt');if(lives<=0){lives=3;bear.position.copy(checkpointReached?new THREE.Vector3(0,0,-24):bearStart);say('Coba lagi! Kembali ke titik aman.')}else bear.position.copy(checkpointReached?new THREE.Vector3(0,0,-24):bearStart);updateHUD()}
 const clock=new THREE.Clock();
 function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.04),t=clock.elapsedTime;
  if(active){
   if(invuln>0)invuln-=dt;if(toastTimer>0){toastTimer-=dt;if(toastTimer<=0)toast.textContent=''}
   const f=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)-sy,s=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+sx,len=Math.hypot(f,s);let ff=f,ss=s;if(len>1){ff/=len;ss/=len}
   const moving=len>.08,cf=new THREE.Vector3(-Math.sin(camYaw),0,-Math.cos(camYaw)),cr=new THREE.Vector3(Math.cos(camYaw),0,-Math.sin(camYaw)),dir=cf.multiplyScalar(ff).add(cr.multiplyScalar(ss));
-  if(moving){bear.rotation.y=Math.atan2(dir.x,dir.z);const speed=(keys.ShiftLeft||keys.ShiftRight)?7:4.8;movePlayer(dir.x*speed*dt,dir.z*speed*dt)}
+  if(moving){bear.rotation.y=Math.atan2(dir.x,dir.z);const speed=(keys.ShiftLeft||keys.ShiftRight||mobileSprint)?7:4.8;movePlayer(dir.x*speed*dt,dir.z*speed*dt)}
   vy-=19*dt;bear.position.y+=vy*dt;if(bear.position.y<=0){bear.position.y=0;vy=0;onGround=true}
-  legs.forEach((p,i)=>{p.rotation.x=moving&&onGround?Math.sin(t*10+i*Math.PI)*.62:THREE.MathUtils.damp(p.rotation.x,0,8,dt);p.rotation.z=moving&&onGround?Math.sin(t*5+i*Math.PI)*.035:0});
-  arms.forEach((p,i)=>{p.rotation.x=moving&&onGround?Math.sin(t*10+i*Math.PI+Math.PI)*.48:THREE.MathUtils.damp(p.rotation.x,0,8,dt);p.rotation.z=(i===0?-.08:.08)+(moving?Math.sin(t*10+i*Math.PI)*.04:0)});
-  head.rotation.x=onGround?Math.sin(t*2)*.025:-.08;
-  if(bearModel){bearModel.position.y=-.12+(moving&&onGround?Math.abs(Math.sin(t*10))*.045:Math.sin(t*1.8)*.018);bearModel.rotation.z=moving&&onGround?Math.sin(t*10)*.018:0;}
-  if(npcModel)npcModel.rotation.y=Math.sin(t*.7)*.045;
+  const sprinting=!!(keys.ShiftLeft||keys.ShiftRight||mobileSprint),gait=sprinting?15:10,amp=sprinting?.88:.62;
+  legs.forEach((p,i)=>{p.rotation.x=moving&&onGround?Math.sin(t*gait+i*Math.PI)*amp:THREE.MathUtils.damp(p.rotation.x,0,9,dt);p.rotation.z=moving&&onGround?Math.sin(t*gait+i*Math.PI)*.045:THREE.MathUtils.damp(p.rotation.z,0,8,dt)});
+  arms.forEach((p,i)=>{p.rotation.x=moving&&onGround?Math.sin(t*gait+i*Math.PI+Math.PI)* (sprinting?.78:.58):THREE.MathUtils.damp(p.rotation.x,0,9,dt);p.rotation.z=(i===0?-.1:.1)+(moving?Math.sin(t*gait+i*Math.PI)*.055:0)});
+  head.rotation.x=onGround?Math.sin(t*2)*.025:-.13;
+  torso.rotation.z=moving&&onGround?THREE.MathUtils.clamp(ss*.12,-.12,.12):THREE.MathUtils.damp(torso.rotation.z,0,6,dt);
+  torso.position.y=1.12+(moving&&onGround?Math.abs(Math.sin(t*gait))*.045:0);
   if(moving&&onGround&&Math.floor(t*3)!==Math.floor((t-dt)*3))sound('step');
-  arms.forEach((p,i)=>p.rotation.x=moving&&onGround?Math.sin(t*11+i*Math.PI+Math.PI)*.4:THREE.MathUtils.damp(p.rotation.x,0,8,dt));
+  if(!onGround){legs.forEach((p,i)=>p.rotation.x=THREE.MathUtils.damp(p.rotation.x,-.28,8,dt));arms.forEach((p,i)=>p.rotation.x=THREE.MathUtils.damp(p.rotation.x,-.62,8,dt));}
   bear.visible=invuln<=0||Math.floor(t*12)%2===0;
   coins.forEach((c,i)=>{if(!c.visible)return;c.rotation.z+=dt*2;c.position.y=.95+Math.sin(t*2+i)*.1;const dx=c.position.x-bear.position.x,dz=c.position.z-bear.position.z;if(dx*dx+dz*dz<1.15&&bear.position.y<1.15){c.visible=false;collected.add(i);coinsTaken=collected.size;updateHUD();save();sound('coin');say('Koin ditemukan! 🪙')}});
-  enemyPhase+=dt;enemy.position.x=enemyHome.x+Math.sin(enemyPhase*1.25)*2.3;enemy.position.z=enemyHome.z+Math.cos(enemyPhase*.8)*1.1;enemy.rotation.y=Math.PI/2+Math.sin(enemyPhase)*.25;
-  if(Math.hypot(enemy.position.x-bear.position.x,enemy.position.z-bear.position.z)<1.05&&bear.position.y<1.1)hurt();
+  enemies.forEach((e)=>{
+   e.phase+=dt;
+   if(e.type==='bee'){
+    const dx=bear.position.x-e.home.x,dz=bear.position.z-e.home.z,dist=Math.hypot(dx,dz);
+    const chase=dist<5.5,tx=chase?bear.position.x:e.home.x+Math.sin(e.phase*.7)*e.range,tz=chase?bear.position.z:e.home.z+Math.cos(e.phase*.65)*e.range;
+    const vx=tx-e.root.position.x,vz=tz-e.root.position.z,vl=Math.max(.001,Math.hypot(vx,vz));
+    e.root.position.x+=vx/vl*e.speed*dt;e.root.position.z+=vz/vl*e.speed*dt;e.root.position.y=1.85+Math.sin(e.phase*5)*.22;
+    e.root.rotation.y=Math.atan2(vx,vz);e.wings.forEach((w,i)=>{w.rotation.z=(i===0?-.35:.35)+Math.sin(e.phase*28)*.48});
+   }else{
+    e.root.position.x=e.home.x+Math.sin(e.phase*(e.type==='turtle'?.65:1.25))*e.range;
+    e.root.position.z=e.home.z+Math.cos(e.phase*.7)*.7;e.root.rotation.y=Math.sin(e.phase)*.28;
+    if(e.type==='turtle')e.feet.forEach((f,i)=>f.rotation.x=Math.sin(e.phase*5+i*Math.PI)*.22);
+    if(e.type==='slime')e.root.scale.y=1+Math.sin(e.phase*5)*.07;
+   }
+   const hitDist=e.type==='bee'? .9 : 1.05;
+   if(Math.hypot(e.root.position.x-bear.position.x,e.root.position.z-bear.position.z)<hitDist && (e.type==='bee'?Math.abs(e.root.position.y-bear.position.y-1)<1.3:bear.position.y<1.1))hurt();
+  });
   const npcNear=Math.hypot(npc.position.x-bear.position.x,npc.position.z-bear.position.z)<2.7;
   npcArms[1].rotation.x=Math.sin(t*2.4)*.15;
   npcArms[0].rotation.z=npcNear?Math.sin(t*5)*.35:-.08;
